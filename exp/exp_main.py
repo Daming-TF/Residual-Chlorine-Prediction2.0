@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider, my_data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, OurCNN
+from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, SimpleCNN, DInformer, DTransformer
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, MyVisual, test_params_flop, get_save_name
 from utils.metrics import metric
 
@@ -36,7 +36,9 @@ class Exp_Main(Exp_Basic):
             'DLinear': DLinear,
             'NLinear': NLinear,
             'Linear': Linear,
-            'OurCNN': OurCNN,
+            'OurCNN': SimpleCNN,
+            'DInformer': DInformer,
+            'DTransformer': DTransformer
         }
         model = model_dict[self.args.model].Model(self.args).float()
 

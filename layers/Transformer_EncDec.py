@@ -9,7 +9,7 @@ class ConvLayer(nn.Module):
         self.downConv = nn.Conv1d(in_channels=c_in,
                                   out_channels=c_in,
                                   kernel_size=3,
-                                  padding=2,
+                                  padding=1,
                                   padding_mode='circular')
         self.norm = nn.BatchNorm1d(c_in)
         self.activation = nn.ELU()
@@ -105,16 +105,20 @@ class DecoderLayer(nn.Module):
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, cross, x_mask=None, cross_mask=None):
+        """
+        x:          DecoderEmbedding{batch, label_len+pred_len}, d_model}
+        cross:      EncoderOutput{batch, seq_len, d_model}
+        """
         x = x + self.dropout(self.self_attention(
             x, x, x,
             attn_mask=x_mask
-        )[0])
+        )[0])       # return {batch, label_len+pred_len, d_model}
         x = self.norm1(x)
 
         x = x + self.dropout(self.cross_attention(
             x, cross, cross,
             attn_mask=cross_mask
-        )[0])
+        )[0])       # return {batch, label_len+pred_len, d_model}
 
         y = x = self.norm2(x)
         y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
@@ -131,6 +135,10 @@ class Decoder(nn.Module):
         self.projection = projection
 
     def forward(self, x, cross, x_mask=None, cross_mask=None):
+        """
+        x:      DecoderEmbedding{bath, label_len+pred_len}, d_model}
+        cross：  EncoderOutput{batch, seq_len, d_model}
+        """
         for layer in self.layers:
             x = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask)
 

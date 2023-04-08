@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class moving_avg(nn.Module):
     """
     Moving average block to highlight the trend of time series
@@ -13,6 +14,9 @@ class moving_avg(nn.Module):
         self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
 
     def forward(self, x):
+        """
+        x_enc:          EncodeInput——{batch, seq_len, channel}
+        """
         # padding on the both ends of time series
         front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)  # out = (input-k+2p)/s + 1
         end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
@@ -31,9 +35,13 @@ class series_decomp(nn.Module):
         self.moving_avg = moving_avg(kernel_size, stride=1)
 
     def forward(self, x):
+        """
+        x_enc:          EncodeInput——{batch, seq_len, channel}
+        """
         moving_mean = self.moving_avg(x)
         res = x - moving_mean
         return res, moving_mean
+
 
 class Model(nn.Module):
     """
@@ -45,7 +53,7 @@ class Model(nn.Module):
         self.pred_len = configs.pred_len
 
         # Decompsition Kernel Size
-        kernel_size = 25
+        kernel_size = configs.moving_avg
         self.decompsition = series_decomp(kernel_size)      # 每个样本的每个channel分别做avgpool
         self.individual = configs.individual
         self.channels = configs.enc_in
@@ -62,8 +70,8 @@ class Model(nn.Module):
                 # self.Linear_Seasonal[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
                 # self.Linear_Trend[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
         else:
-            self.Linear_Seasonal = nn.Linear(self.seq_len,self.pred_len)
-            self.Linear_Trend = nn.Linear(self.seq_len,self.pred_len)
+            self.Linear_Seasonal = nn.Linear(self.seq_len, self.pred_len)
+            self.Linear_Trend = nn.Linear(self.seq_len, self.pred_len)
             
             # Use this two lines if you want to visualize the weights
             # self.Linear_Seasonal.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))

@@ -259,12 +259,13 @@ import torch
 #       # f"d_b_c.shape:{d_b_c.shape}"
 #       f"d.shape:{d.shape}\n")
 
-import torch
+
 import torch.nn as nn
-a = torch.arange(0, 12).view(2, 6).float()
-pool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
-b = pool(a)
+import torch
+b, l, c = 2, 7, 3
+a = torch.arange(42).view(b, l, c).float()
+avg = nn.AvgPool1d(kernel_size=3, stride=1, padding=1)
+result = avg(a.permute(0, 2, 1))
 print(a)
-print(a.shape)
-print(b)
-print(b.shape)
+print(a.permute(0, 2, 1))
+print(result)

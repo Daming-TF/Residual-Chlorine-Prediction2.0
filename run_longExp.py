@@ -18,8 +18,8 @@ parser.add_argument('--train_only', type=bool, required=False, default=False,
                     help='perform training on full input dataset without validation and testing')
 parser.add_argument('--test_only', type=bool, default=False,
                     help='perform test on full input dataset without training and validation')
-parser.add_argument('--model_id', type=str, required=False, default='test-whatever', help='model id')
-parser.add_argument('--model', type=str, required=False, default='Informer',
+parser.add_argument('--model_id', type=str, required=False, default='test_MS', help='model id')
+parser.add_argument('--model', type=str, required=False, default='DTransformer',
                     help='model name, options: [Autoformer, Informer, Transformer, DLinear, OurCNN]')
 parser.add_argument('--pic_save_key', type=str, required=False, default=None,
                     help='By default, the images will be named train.jpg and test.jpg, respectively. '
@@ -31,7 +31,7 @@ parser.add_argument('--data', type=str, required=False, default='ETTm1',
 parser.add_argument('--root_path', type=str, default='./dataset/', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='ETTm1.csv',
                     help='options:[ETTh1.csv, ETTh2.csv, ETTm1.csv, ETTm2.csv, RC.xlsx, traffic.csv, weather.csv]')
-parser.add_argument('--features', type=str, default='M',
+parser.add_argument('--features', type=str, default='S',
                     help='forecasting task, options:[M, S, MS]; '
                          'M:multivariate predict multivariate, '
                          'S:univariate predict univariate, '
@@ -78,7 +78,7 @@ parser.add_argument('--embed', type=str, default='timeF',
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', default=False, help='whether to predict unseen future data')
-# CNN
+# My Add
 parser.add_argument('--kernel_size', type=int, default=3)
 parser.add_argument('--layer_num', type=int, default=15)
 parser.add_argument('--auto_capture', type=bool, default=False,
@@ -97,7 +97,7 @@ parser.add_argument('--lradj', type=str, default='type1', help='adjust learning 
 parser.add_argument('--use_amp', help='use automatic mixed precision training', default=False)
 
 # criterion
-parser.add_argument('--criterion', type=str, help='options[mse, mae, huber]', default='huber')
+parser.add_argument('--criterion', type=str, help='options[mse, mae, huber, group_mae]', default='huber')
 
 # GPU
 parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')

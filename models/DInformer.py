@@ -4,45 +4,31 @@ import torch.nn.functional as F
 from utils.masking import TriangularCausalMask, ProbMask
 from layers.Transformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer, ConvLayer
 from layers.SelfAttention_Family import FullAttention, ProbAttention, AttentionLayer
-from layers.Embed import DataEmbedding,DataEmbedding_wo_pos,DataEmbedding_wo_temp,DataEmbedding_wo_pos_temp
-import numpy as np
+from layers.Embed import DataEmbedding
+from .DLinear import series_decomp
 
 
 class Model(nn.Module):
     """
-    Informer with Propspare attention in O(LlogL) complexity
+    DInformer :
+    In order to prove that Dlinear performs well in a single variable, it only improves performance because
+    its decomposition operation makes the task easier, so we make a decomposition with Informer.
     """
     def __init__(self, configs):
         super(Model, self).__init__()
         self.pred_len = configs.pred_len
+        self.seq_len = configs.seq_len
         self.output_attention = configs.output_attention
 
+        # decomposition
+        self.Decompsition = series_decomp(configs.avg_kernel_size)
+        self.Linear_Trend = nn.Linear(self.seq_len, self.pred_len)
+
         # Embedding
-        if configs.embed_type == 0:
-            self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                            configs.dropout)
-            self.dec_embedding = DataEmbedding(configs.dec_in, configs.d_model, configs.embed, configs.freq,
+        self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.embed, configs.freq,
+                                        configs.dropout)
+        self.dec_embedding = DataEmbedding(configs.dec_in, configs.d_model, configs.embed, configs.freq,
                                            configs.dropout)
-        elif configs.embed_type == 1:
-            self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-            self.dec_embedding = DataEmbedding(configs.dec_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-        elif configs.embed_type == 2:
-            self.enc_embedding = DataEmbedding_wo_pos(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-            self.dec_embedding = DataEmbedding_wo_pos(configs.dec_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-        elif configs.embed_type == 3:
-            self.enc_embedding = DataEmbedding_wo_temp(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-            self.dec_embedding = DataEmbedding_wo_temp(configs.dec_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-        elif configs.embed_type == 4:
-            self.enc_embedding = DataEmbedding_wo_pos_temp(configs.enc_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
-            self.dec_embedding = DataEmbedding_wo_pos_temp(configs.dec_in, configs.d_model, configs.embed, configs.freq,
-                                                    configs.dropout)
 
         # Encoder
         self.encoder = Encoder(
@@ -100,14 +86,16 @@ class Model(nn.Module):
 
         x_mark_dec：     Decoder_TimeFeature——{batch, label+pred_len, time_freq}
         """
+        seasonal_init, trend_init = self.Decompsition(x_enc)
+        trend_output = self.Linear_Trend(trend_init.permute(0, 2, 1)).permute(0, 2, 1)
 
-        enc_out = self.enc_embedding(x_enc, x_mark_enc)     # return {batch, seq_len, d_model}
+        enc_out = self.enc_embedding(seasonal_init, x_mark_enc)     # return {bath, seq_len, d_model}
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
-        dec_out = self.dec_embedding(x_dec, x_mark_dec)     # return {batch, label_len+pred_len, d_model}
-        dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)     # return {batch, label_len+pred_len, d_model}
+        dec_out = self.dec_embedding(x_dec, x_mark_dec)     # return {bath, label_len+pred_len}, d_model}
+        dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
 
         if self.output_attention:
-            return dec_out[:, -self.pred_len:, :], attns
+            return dec_out[:, -self.pred_len:, :]+trend_output, attns
         else:
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return dec_out[:, -self.pred_len:, :]+trend_output  # [B, L, D]
